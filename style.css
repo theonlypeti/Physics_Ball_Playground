@@ -88,4 +88,16 @@ input{
     border-left: 10px solid #88aaff;
 }
 
+.wall{
+    position: absolute;
+    background-color: #777766;
+    border-radius: 0%;
+}
 
+#tutorial{
+    /*position: absolute;*/
+    margin-left: 35%;
+    /*margin: auto;*/
+    font-size: 25px;
+    color: rgba(255, 255, 255, 0.3);
+}

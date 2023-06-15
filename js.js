@@ -1,5 +1,6 @@
 const floor = document.getElementById("floor")
 let objs = [];
+let walls = [];
 
 let GRAVITY = 0.07;
 let BOUNCINESS = 0.8;
@@ -48,6 +49,27 @@ class Ball{
             //     this.elem.classList.remove("squish");
             //     void this.elem.offsetWidth;}
             // this.elem.classList.add("squish");
+        }
+        for (const wall of walls){
+            if(this.y < wall.y && this.y + this.elem.offsetHeight > wall.y && this.x < wall.x + wall.w && this.x + this.elem.offsetWidth > wall.x){
+                this.yv *= -this.bounciness;
+                this.y = wall.y - this.elem.offsetHeight;
+            }
+            if(this.x < wall.x && this.x + this.elem.offsetWidth > wall.x && this.y < wall.y + wall.h && this.y + this.elem.offsetHeight > wall.y){
+                this.xv *= -this.bounciness;
+                this.x = wall.x - this.elem.offsetWidth;
+            }
+
+            if(this.x + this.elem.offsetWidth > wall.x + wall.w && this.x < wall.x + wall.w && this.y < wall.y + wall.h && this.y + this.elem.offsetHeight > wall.y){
+                this.xv *= -this.bounciness;
+                this.x = wall.x + wall.w;
+            }
+
+            if(this.y + this.elem.offsetHeight > wall.y + wall.h && this.y < wall.y + wall.h && this.x < wall.x + wall.w && this.x + this.elem.offsetWidth > wall.x){
+                this.yv *= -this.bounciness;
+                this.y = wall.y + wall.h;
+            }
+
         }
     }
 }
@@ -126,50 +148,87 @@ class Metal extends Ball{
     }
 }
 
+class Wall{
+    constructor(x,y,w,h,elem) {
+        this.x = x;
+        this.y = y;
+        this.w = w;
+        this.h = h;
+        this.elem = elem
+    }
+
+    draw(){
+        this.elem.style.left = this.x + "px";
+        this.elem.style.top = this.y + "px";
+        this.elem.style.width = this.w + "px";
+        this.elem.style.height = this.h + "px";
+    }
+
+}
+
 const balltypes = {
     "ice": Ice,
     "slime": Slime,
     "rubber": Rubber,
     "glass": Glass,
-    "metal": Metal
+    "metal": Metal,
+    "wall": Wall
 }
 
 
 let startpos = 0;
 window.onmousedown = function(event) {
+    document.getElementById("tutorial").style.visibility = "hidden";
     if(event.clientY > 100){
         startpos = event
         dragging = true;
-        startarrow(event)
+        if(BALLTYPE === "wall"){
+            console.log(walls)
+            const wall = document.createElement("div")
+            wall.className = "wall"
+            let x = event.clientX; let y = event.clientY
+            wallobj = new balltypes[BALLTYPE](x,y,0,0,wall)
+            walls.push(wallobj);
+            document.body.insertBefore(wall, floor)
+        }
+        else{
+            startarrow(event)
+        }
     }
 }
 
 
 window.onmouseup = function(event) {
     if(!dragging){return}
-    //velocities
-    const xv = (startpos.clientX - event.clientX)/50;
-    const yv = (startpos.clientY - event.clientY)/50;
+    if(BALLTYPE === "wall"){
+        console.log(walls)
+    }
+    else {
 
-    //make ball elem
-    const ball = document.createElement("div")
-    ball.className = "ball"
-    ball.style.left = startpos.clientX - ball.offsetWidth/2 + "px";
-    ball.style.top = startpos.clientY - ball.offsetHeight/2 + "px";
+        //velocities
+        const xv = (startpos.clientX - event.clientX) / 50;
+        const yv = (startpos.clientY - event.clientY) / 50;
 
-    //make ball obj
-    const ballobj = new balltypes[BALLTYPE](ball)
-    ballobj.xv = xv;
-    ballobj.yv = yv;
-    objs.push(ballobj)
+        //make ball elem
+        const ball = document.createElement("div")
+        ball.className = "ball"
+        ball.style.left = startpos.clientX - ball.offsetWidth / 2 + "px";
+        ball.style.top = startpos.clientY - ball.offsetHeight / 2 + "px";
 
-    //cleanup
-    document.getElementById("arrow").remove()
+        //make ball obj
+        const ballobj = new balltypes[BALLTYPE](ball)
+        ballobj.xv = xv;
+        ballobj.yv = yv;
+        objs.push(ballobj)
+
+        //cleanup
+        document.getElementById("arrow").remove()
+        //insert ball
+
+        const floor = document.getElementById("floor")
+        document.body.insertBefore(ball, floor)
+    }
     dragging = false;
-
-    //insert ball
-    const floor = document.getElementById("floor")
-    document.body.insertBefore(ball, floor)
 
 }
 
@@ -187,6 +246,9 @@ function startarrow(event){
 //
 // objs.push(new Ball(ball))
 function main(){
+    for (const obj of walls){
+        obj.draw();
+    }
     for (const obj of objs){
         // console.log(obj)
         obj.update();
@@ -198,8 +260,15 @@ let dragging = false;
 window.onmousemove = function(event) {
 
     if (dragging) {
-        const arrow = document.getElementById("arrow")
-        facing(arrow, event.clientX, event.clientY, 270)
+        if(BALLTYPE === "wall"){
+            const wall = walls[walls.length-1]
+            wall.w = event.clientX - startpos.clientX
+            wall.h = event.clientY - startpos.clientY
+        }
+        else{
+            const arrow = document.getElementById("arrow")
+            facing(arrow, event.clientX, event.clientY, 270)
+        }
     }
 }
 
@@ -236,6 +305,12 @@ document.getElementById("reset").addEventListener("click", function(event) {
     for (const ball of balls2) {
         ball.remove()
     }
+
+    let walls2 = Array.from(walls)
+    for (const wall of walls2) {
+        wall.elem.remove()
+    }
+    walls = [];
 })
 
 document.getElementById("balltype").addEventListener("change", function(event) {
