@@ -1,4 +1,3 @@
-const floor = document.getElementById("floor")
 let objs = [];
 let walls = [];
 
@@ -10,15 +9,21 @@ let BALLTYPE = "metal"
 
 
 class Ball{
-    constructor(elem){
+    constructor(elem,x=0,y=0){
         this.elem = elem;
-        this.x = parseInt(elem.style.left);
-        this.y = parseInt(elem.style.top);
+        this.x = x
+        this.y = y
         this.xv = 0;
         this.yv = 0;
         // this.bounciness = BOUNCINESS;
         this.drag = DRAG;
         // this.hdrag = HDRAG;
+
+        this.elem.className = "ball"
+        this.elem.style.left = x - this.elem.offsetWidth / 2 + "px";
+        this.elem.style.top = y - this.elem.offsetHeight / 2 + "px";
+
+        document.body.insertBefore(this.elem, document.getElementById("balltype"))
     }
 
     update(){
@@ -27,9 +32,9 @@ class Ball{
         this.yv = Math.min(this.yv + GRAVITY, this.drag);
         this.y += this.yv;
         this.collision();
-        console.log(this.xv, this.yv, this.y + this.elem.offsetHeight - floor.offsetTop)
-        if (Math.abs(this.xv) <= this.hdrag && Math.abs(this.yv) <= 0.033 && Math.abs(this.y + this.elem.offsetHeight - floor.offsetTop) <= 0.13){
+        if (Math.abs(this.xv) <= this.hdrag && Math.abs(this.yv) <= 0.033 && Math.abs(this.y) <= 5){
             objs.splice(objs.indexOf(this), 1);
+
         } else if (this.x + this.elem.offsetWidth < 0 || this.x > window.innerWidth) {
             this.elem.remove();
             objs.splice(objs.indexOf(this), 1);
@@ -42,32 +47,10 @@ class Ball{
     }
 
     collision(){
-        if(this.y + this.elem.offsetHeight - 1 > floor.offsetTop){
-            this.yv *= -this.bounciness;
-            this.y = floor.offsetTop - this.elem.offsetHeight;
-            // if (this.elem.classList.contains("squish")){
-            //     this.elem.classList.remove("squish");
-            //     void this.elem.offsetWidth;}
-            // this.elem.classList.add("squish");
-        }
+
         for (const wall of walls){
-            if(this.y < wall.y && this.y + this.elem.offsetHeight > wall.y && this.x < wall.x + wall.w && this.x + this.elem.offsetWidth > wall.x){
-                this.yv *= -this.bounciness;
-                this.y = wall.y - this.elem.offsetHeight;
-            }
-            if(this.x < wall.x && this.x + this.elem.offsetWidth > wall.x && this.y < wall.y + wall.h && this.y + this.elem.offsetHeight > wall.y){
-                this.xv *= -this.bounciness;
-                this.x = wall.x - this.elem.offsetWidth;
-            }
-
-            if(this.x + this.elem.offsetWidth > wall.x + wall.w && this.x < wall.x + wall.w && this.y < wall.y + wall.h && this.y + this.elem.offsetHeight > wall.y){
-                this.xv *= -this.bounciness;
-                this.x = wall.x + wall.w;
-            }
-
-            if(this.y + this.elem.offsetHeight > wall.y + wall.h && this.y < wall.y + wall.h && this.x < wall.x + wall.w && this.x + this.elem.offsetWidth > wall.x){
-                this.yv *= -this.bounciness;
-                this.y = wall.y + wall.h;
+            if(wall.collision(this)){
+                break;
             }
 
         }
@@ -75,8 +58,8 @@ class Ball{
 }
 
 class Ice extends Ball{
-    constructor(elem){
-        super(elem);
+    constructor(elem,x,y){
+        super(elem,x,y);
         this.hdrag = 0.0005;
         this.bounciness = 0.3;
         this.color = "#60aaff";
@@ -85,8 +68,8 @@ class Ice extends Ball{
 }
 
 class Slime extends Ball{
-    constructor(elem){
-        super(elem);
+    constructor(elem,x,y){
+        super(elem,x,y);
         this.hdrag = 0.01;
         this.bounciness = 0.1;
         this.color = "#00ff00";
@@ -95,8 +78,8 @@ class Slime extends Ball{
 }
 
 class Rubber extends Ball{
-    constructor(elem){
-        super(elem);
+    constructor(elem,x,y){
+        super(elem,x,y);
         this.hdrag = 0.001;
         this.bounciness = 0.9;
         this.color = "#ccaa00";
@@ -105,8 +88,8 @@ class Rubber extends Ball{
 }
 
 class Glass extends Ball{
-    constructor(elem){
-        super(elem);
+    constructor(elem,x,y){
+        super(elem,x,y);
         this.hdrag = 0.001;
         this.bounciness = 0.9;
         this.color = "#88aaff";
@@ -114,21 +97,23 @@ class Glass extends Ball{
     }
 
     collision(){
-        if(this.y + this.elem.offsetHeight >= floor.offsetTop){
-            this.elem.remove();
-            objs.splice(objs.indexOf(this), 1);
-            this.spawnshards();
+        for (const wall of walls) {
+            if(this.y + this.elem.offsetHeight >= wall.y && this.x > wall.x && this.x < wall.x + wall.w && this.y < wall.y + wall.h){
+                this.elem.remove();
+                objs.splice(objs.indexOf(this), 1);
+                this.spawnshards(this.x,this.y); //TODO SIDE SHARDS probably by velocities
+            }
         }
     }
 
-    spawnshards(){
+    spawnshards(x,y){
         for (let i = 0; i < 10; i++) {
             const shard = document.createElement("div")
             shard.className = "shard bounce"
-            shard.style.left = this.x + (Math.random()-0.5) * 20 * Math.min(this.xv,2) * -Math.min(this.yv,2) + "px";
-            shard.style.top = floor.offsetTop + (Math.random()-0.5)*5 - 10 + "px";
+            shard.style.left = x + (Math.random()-0.5) * 20 * Math.min(this.xv,2) * -Math.min(this.yv,2) + "px";
+            shard.style.top = y+10 + (Math.random()-0.5)*5 - 10 + "px";
             shard.style.transform = "rotate(" + Math.random() * 360 + "deg)";
-            document.body.insertBefore(shard, floor)
+            document.body.insertBefore(shard, document.getElementById("balltype"))
             var rot = Math.random() * 360;
             shard.style.setProperty('--rot', rot +'deg');
             $('.shard').fadeOut(5000, function() {
@@ -139,8 +124,8 @@ class Glass extends Ball{
 }
 
 class Metal extends Ball{
-    constructor(elem){
-        super(elem);
+    constructor(elem,x,y){
+        super(elem,x,y);
         this.hdrag = 0.001;
         this.bounciness = 0.3;
         this.color = "#aaaaaa";
@@ -155,6 +140,8 @@ class Wall{
         this.w = w;
         this.h = h;
         this.elem = elem
+        this.elem.classList.add("wall")
+        document.body.insertBefore(this.elem, document.getElementById("balltype"))
     }
 
     draw(){
@@ -162,6 +149,33 @@ class Wall{
         this.elem.style.top = this.y + "px";
         this.elem.style.width = this.w + "px";
         this.elem.style.height = this.h + "px";
+    }
+
+    collision(ball){
+
+        if(ball.y < this.y && ball.y + ball.elem.offsetHeight > this.y && ball.x < this.x + this.w && ball.x + ball.elem.offsetWidth > this.x){
+            ball.yv *= -ball.bounciness;
+            ball.y = this.y - ball.elem.offsetHeight;
+            return true
+        }
+        if(ball.x < this.x && ball.x + ball.elem.offsetWidth > this.x && ball.y < this.y + this.h && ball.y + ball.elem.offsetHeight > this.y){
+            ball.xv *= -ball.bounciness;
+            ball.x = this.x - ball.elem.offsetWidth;
+            return true
+        }
+
+        if(ball.x + ball.elem.offsetWidth > this.x + this.w && ball.x < this.x + this.w && ball.y < this.y + this.h && ball.y + ball.elem.offsetHeight > this.y){
+            ball.xv *= -ball.bounciness;
+            ball.x = this.x + this.w;
+            return true
+        }
+
+        if(ball.y + ball.elem.offsetHeight > this.y + this.h && ball.y < this.y + this.h && ball.x < this.x + this.w && ball.x + ball.elem.offsetWidth > this.x){
+            ball.yv *= -ball.bounciness;
+            ball.y = this.y + this.h;
+            return true
+        }
+        return false
     }
 
 }
@@ -179,7 +193,7 @@ const balltypes = {
 let startpos = 0;
 window.onmousedown = function(event) {
     document.getElementById("tutorial").style.visibility = "hidden";
-    if(event.clientY > 100){
+    if(event.clientY > 30){
         startpos = event
         dragging = true;
         if(BALLTYPE === "wall"){
@@ -189,7 +203,7 @@ window.onmousedown = function(event) {
             let x = event.clientX; let y = event.clientY
             wallobj = new balltypes[BALLTYPE](x,y,0,0,wall)
             walls.push(wallobj);
-            document.body.insertBefore(wall, floor)
+            document.body.insertBefore(wall, document.getElementById("balltype"))
         }
         else{
             startarrow(event)
@@ -211,22 +225,18 @@ window.onmouseup = function(event) {
 
         //make ball elem
         const ball = document.createElement("div")
-        ball.className = "ball"
-        ball.style.left = startpos.clientX - ball.offsetWidth / 2 + "px";
-        ball.style.top = startpos.clientY - ball.offsetHeight / 2 + "px";
 
         //make ball obj
-        const ballobj = new balltypes[BALLTYPE](ball)
+        const ballobj = new balltypes[BALLTYPE](ball, startpos.clientX, startpos.clientY)
         ballobj.xv = xv;
         ballobj.yv = yv;
         objs.push(ballobj)
 
         //cleanup
         document.getElementById("arrow").remove()
-        //insert ball
 
-        const floor = document.getElementById("floor")
-        document.body.insertBefore(ball, floor)
+
+
     }
     dragging = false;
 
@@ -240,11 +250,6 @@ function startarrow(event){
     arrow.style.top = event.clientY + "px";
 }
 
-// ball = new Ball(document.getElementById("ball"))
-// const ball = document.createElement("div")
-// ball.className = "ball"
-//
-// objs.push(new Ball(ball))
 function main(){
     for (const obj of walls){
         obj.draw();
@@ -262,8 +267,13 @@ window.onmousemove = function(event) {
     if (dragging) {
         if(BALLTYPE === "wall"){
             const wall = walls[walls.length-1]
-            wall.w = event.clientX - startpos.clientX
-            wall.h = event.clientY - startpos.clientY
+
+            wall.x = Math.min(startpos.x, event.clientX);
+            wall.y = Math.min(startpos.y, event.clientY);
+
+            wall.w = Math.abs(event.clientX - startpos.clientX)
+            wall.h = Math.abs(event.clientY - startpos.clientY)
+
         }
         else{
             const arrow = document.getElementById("arrow")
@@ -317,4 +327,10 @@ document.getElementById("balltype").addEventListener("change", function(event) {
     BALLTYPE = event.target.value;
 })
 
+addEventListener("selectstart", event => event.preventDefault());
+
+
+// walls.push(new Wall(0,0,10,window.innerHeight,document.createElement("div")));
+// walls.push(new Wall(window.innerWidth-10,0,10,window.innerHeight,document.createElement("div")));
+walls.push(new Wall(0,window.innerHeight-10,window.innerWidth,10,document.createElement("div")));
 setInterval(main,1)
